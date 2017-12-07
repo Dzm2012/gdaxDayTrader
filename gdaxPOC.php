@@ -15,12 +15,12 @@ function runCoinBase(){
   $myCoin = .2;
   $lastBuy = 97.00;
   $lastSell = 0;
-  $threshHold = .05;
+  $threshHold = .02;
   $profit = 0;
 
   $ext="/products/LTC-USD/ticker";
   $buy = false;
-  
+
   $lastMarketPrice = 0;
   while(true){
     $signature = signature($ext);
@@ -31,38 +31,37 @@ function runCoinBase(){
     else{
       $mode="Sell";
     }
-    
+
     if(!isset($obj['price'])){
       continue;
     }
-    
+
     if($lastMarketPrice != $obj['price']){
       $lastMarketPrice = $obj['price'];
       formatOutput($myMony,$myCoin,$lastBuy,$lastSell,$profit,$mode,$obj['price']);
     }
     /*
-    Buy when 
-      Last sell > (current price + transaction fees + profit margin)
-      transaction fees = current money * .003
-      coin = (current money - transaction fees) / current price
+    Buy when
+    Last sell > (current price + transaction fees + profit margin)
+    transaction fees = current money * .003
+    coin = (current money - transaction fees) / current price
     */
-    
+
     /*
-    Sell when 
-      Last Buy < (current price - transaction fees - profit margin)
-      transaction fees = (current price * my coins) *.003
-      money = (coins * current price) - transaction fees 
+    Sell when
+    Last Buy < (current price - transaction fees - profit margin)
+    transaction fees = (current price * my coins) *.003
+    money = (coins * current price) - transaction fees
     */
-    
-    
+
+    // Price + transaction fee
+    $current_price = $obj['price'] + ($obj['price'] * .003);
+
     if($buy){
-      $transactionFee = $myMony * .003;
-      $buyCondition = $obj['price'] + $transactionFee - $threshHold;
-      
-      if($lastSell>$buyCondition){
-        $lastBuy = $obj['price'] + $transactionFees;
-        $myCoin = ($myMony - $transactionFee)/$obj['price'];
-        $myMony = 0;
+      if (($lastSell - $current_price) > $threshHold) {
+        $lastBuy = $current_price;
+        $myCoin = ($myMony - $current_price)/$current_price;
+        $myMony = $myMony - $current_price;
         $buy = false;
         echo "\033[31m";
         formatOutput($myMony,$myCoin,$lastBuy,$lastSell,$profit,$mode,$obj['price']);
@@ -70,14 +69,12 @@ function runCoinBase(){
       }
     }
     else{
-      $transactionFees =  ($obj['price'] * $myCoin) * .003;
-      $sellCondition = $obj['price'] + $transactionFees;
-      
-      if($lastBuy<$sellCondition){
-        $lastSell = $obj['price'] - $transactionFees;
-        $myMony = ($myCoin * $obj['price']) - $transactionFees;
+      if (($current_price - $lastBuy) > $threshHold) {
+        $lastSell = $current_price;
+        $myMony = $current_price;
         $myCoin = 0;
         $buy = true;
+        $profit += $lastSell - $lastBuy;
         echo "\033[32m";
         formatOutput($myMony,$myCoin,$lastBuy,$lastSell,$profit,$mode,$obj['price']);
         echo "\033[0m";
